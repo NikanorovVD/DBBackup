@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <Folder Include="AutoBackup\" />
+    <Folder Include="Postgres\" />
   </ItemGroup>
 
 </Project>
