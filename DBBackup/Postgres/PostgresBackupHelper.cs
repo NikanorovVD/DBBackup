@@ -2,7 +2,7 @@
 using System.Text;
 using Npgsql;
 
-namespace DBBackup
+namespace DBBackup.Postgres
 {
     public class PostgresBackupService : IBackupService
     {

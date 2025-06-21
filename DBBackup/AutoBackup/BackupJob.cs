@@ -1,16 +1,16 @@
 ﻿using Quartz;
 
-namespace DBBackup
+namespace DBBackup.AutoBackup
 {
     public class BackupJob<BackupServiceT> : IJob where BackupServiceT : IBackupService, new()
     {
         private IBackupService _backupService;
 
-        public string User {  get; set; }
+        public string User { get; set; }
         public string Password { get; set; }
-        public string Host {  get; set; }
+        public string Host { get; set; }
         public int Port { get; set; }
-        public string Database {  get; set; }
+        public string Database { get; set; }
 
         public BackupJob()
         {
@@ -31,7 +31,7 @@ namespace DBBackup
                 DatabaseName = Database
             };
 
-            string path = $"dump_{DateTime.Now:yy-MM-dd-HH-mm-ss}.sql"; 
+            string path = $"dump_{DateTime.Now:yy-MM-dd-HH-mm-ss}.sql";
             await _backupService.BackupDatabaseAsync(database, path);
         }
     }

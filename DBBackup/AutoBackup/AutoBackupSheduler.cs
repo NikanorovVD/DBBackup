@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace DBBackup
+namespace DBBackup.AutoBackup
 {
     public static class AutoBackupSheduler<BackupServiceT> where BackupServiceT : IBackupService, new()
     {

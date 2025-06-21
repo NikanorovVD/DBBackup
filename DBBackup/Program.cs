@@ -1,4 +1,6 @@
-﻿using DBBackup.Configuration;
+﻿using DBBackup.AutoBackup;
+using DBBackup.Configuration;
+using DBBackup.Postgres;
 using Microsoft.Extensions.Configuration;
 
 namespace DBBackup
