@@ -31,7 +31,7 @@ namespace DBBackup.Postgres
             }
             catch (Exception ex)
             {
-                Log.Error("Не удалось установить соединение с БД: " + ex.ToString());
+                Log.Error("Error connecting database {Database}: {Exception}", database.DatabaseName, ex.ToString());
                 return false;
             }
             finally

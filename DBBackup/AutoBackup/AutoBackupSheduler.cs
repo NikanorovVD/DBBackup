@@ -40,10 +40,15 @@ namespace DBBackup.AutoBackup
                 .WithSimpleSchedule(s =>
                    s.WithInterval(interval)
                    .RepeatForever())
-                .Build();                
+                .Build();
 
-            await scheduler.ScheduleJob(job, trigger);
-            await builder.RunAsync();
+            await scheduler.ScheduleJob(job, trigger);          
+            Task host = builder.RunAsync();
+
+            bool dbAccessible = new BackupServiceT().CheckConnection(database);
+            if (!dbAccessible) Log.Error("Can not access Database {Database}", database.DatabaseName);
+
+            await host;
         }
     }
 }
