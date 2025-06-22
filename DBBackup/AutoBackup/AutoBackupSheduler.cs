@@ -7,7 +7,7 @@ namespace DBBackup.AutoBackup
 {
     public static class AutoBackupSheduler<BackupServiceT> where BackupServiceT : IBackupService, new()
     {
-        public static async Task StartAutoBackup(Database database)
+        public static async Task StartAutoBackup(Database database, DateTime start, TimeSpan interval)
         {
             IHost builder = Host.CreateDefaultBuilder()
                  .UseSerilog()
@@ -36,11 +36,11 @@ namespace DBBackup.AutoBackup
 
             ITrigger trigger = TriggerBuilder.Create()
                 .WithIdentity("BackupTrigger")
-                .StartNow()
-                .WithSimpleSchedule(x => x
-                    .WithIntervalInSeconds(40)
-                    .RepeatForever())
-                .Build();
+                .StartAt(start)
+                .WithSimpleSchedule(s =>
+                   s.WithInterval(interval)
+                   .RepeatForever())
+                .Build();                
 
             await scheduler.ScheduleJob(job, trigger);
             await builder.RunAsync();

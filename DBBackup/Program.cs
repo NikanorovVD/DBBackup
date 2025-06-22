@@ -16,11 +16,12 @@ namespace DBBackup
 
             Settings? settings = config.Get<Settings>() ?? throw new Exception("Invalid settings");
 
+            AutoBackupSettings backup = settings.AutoBackups.First();
             Connection connection = settings.Connection;
             Database database = new Database()
             {
                 Connection = connection,
-                DatabaseName = settings.AutoBackups.First().Database
+                DatabaseName = backup.Database
             };
 
             Log.Logger = new LoggerConfiguration()
@@ -29,7 +30,10 @@ namespace DBBackup
 
             //Console.WriteLine(new PostgresBackupService().CheckConnection(database));
             //await new PostgresBackupService().RestoreDatabaseAsync("backup1.sql", database);
-            await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(database);
+
+            DateTime start = backup.Start;
+            TimeSpan interval = backup.Period; 
+            await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(database, start, interval);
         }
     }
 }
