@@ -1,5 +1,6 @@
 ﻿using DBBackup.Configuration;
 using DBBackup.Email;
+using DBBackup.Helpers;
 using Quartz;
 using Serilog;
 using System.Text.Json;
@@ -22,7 +23,10 @@ namespace DBBackup.AutoBackup
             EmailSettings emailSettings = JsonSerializer.Deserialize<EmailSettings>(context.MergedJobDataMap.GetString("EmailSettings")!)!;
             _emailService = new EmailService(emailSettings);
 
-            string path = $"dump_{DateTime.Now:yy-MM-dd-HH-mm-ss}.sql";
+            string pathTemplate = context.MergedJobDataMap.GetString("Path")!;
+            string path = PathFormatter.ReplaceDateTimePlaceholders(pathTemplate, DateTime.Now);
+            path = Path.ChangeExtension(path, "sql");
+
             try
             {
                 await _backupService.BackupDatabaseAsync(database, path);

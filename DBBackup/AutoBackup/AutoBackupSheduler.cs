@@ -48,6 +48,7 @@ namespace DBBackup.AutoBackup
                     .UsingJobData("Database", JsonSerializer.Serialize(database))
                     .UsingJobData("AutoBackupEmailSettings", JsonSerializer.Serialize(autoBackup.Email))
                     .UsingJobData("EmailSettings", JsonSerializer.Serialize(emailSettings))
+                    .UsingJobData("Path", autoBackup.Path)
                     .Build();
 
 
