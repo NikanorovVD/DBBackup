@@ -2,6 +2,7 @@
 using DBBackup.Configuration;
 using DBBackup.Postgres;
 using Microsoft.Extensions.Configuration;
+using Serilog;
 
 namespace DBBackup
 {
@@ -22,7 +23,14 @@ namespace DBBackup
                 DatabaseName = settings.AutoBackups.First().Database
             };
 
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+                .CreateLogger();
 
+            //Console.WriteLine(new PostgresBackupService().CheckConnection(database));
+            //await new PostgresBackupService().RestoreDatabaseAsync("backup1.sql", database);
             await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(database);
         }
     }

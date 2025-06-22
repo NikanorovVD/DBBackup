@@ -1,6 +1,7 @@
 ﻿using Quartz;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Serilog;
 
 namespace DBBackup.AutoBackup
 {
@@ -9,6 +10,7 @@ namespace DBBackup.AutoBackup
         public static async Task StartAutoBackup(Database database)
         {
             IHost builder = Host.CreateDefaultBuilder()
+                 .UseSerilog()
                  .ConfigureServices((cxt, services) =>
                  {
                      services.AddQuartz();
@@ -36,7 +38,7 @@ namespace DBBackup.AutoBackup
                 .WithIdentity("BackupTrigger")
                 .StartNow()
                 .WithSimpleSchedule(x => x
-                    .WithIntervalInSeconds(4)
+                    .WithIntervalInSeconds(40)
                     .RepeatForever())
                 .Build();
 

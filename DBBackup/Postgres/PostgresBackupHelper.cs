@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using DBBackup.Helpers;
 using Npgsql;
+using Serilog;
 
 namespace DBBackup.Postgres
 {
@@ -29,7 +31,7 @@ namespace DBBackup.Postgres
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Не удалось установить соединение с БД: " + ex.ToString());
+                Log.Error("Не удалось установить соединение с БД: " + ex.ToString());
                 return false;
             }
             finally
@@ -65,21 +67,38 @@ namespace DBBackup.Postgres
             // выполнение
             using Process process = new Process() { StartInfo = startInfo };
 
+            Log.Information("Start backup");
+            DateTime start = DateTime.Now;
+
             process.Start();
             string stdout = process.StandardOutput.ReadToEnd();
             string stderrx = process.StandardError.ReadToEnd();
             process.WaitForExit();
 
             // лог
-            Console.WriteLine($"Exit code : {process.ExitCode}");
-            Console.WriteLine("std out : " + stdout);
-            Console.WriteLine("std err : " + stderrx);
+            TimeSpan execTime = DateTime.Now - start;
+            bool fileExists = File.Exists(backupPath);
+            long fileSize = fileExists ? new FileInfo(backupPath).Length : 0;
+
+            string logTemplate =
+                "Backup finish with exit code {ExitCode}." + Environment.NewLine +
+                "Execution time: {Time}" + Environment.NewLine +
+                (fileExists ? "Backup file path: {Path}" : "File {Path} not exist") + Environment.NewLine +
+                (fileExists ? "Backup size: {Size}" : string.Empty);
+
+            Log.Information(logTemplate, process.ExitCode, execTime.ToString(@"hh\:mm\:ss"), backupPath, FileSizeString.Get(fileSize));
+
+            if (process.ExitCode != 0)
+                Log.Error("pg_dump error : {Error}", stderrx);
+
+            Log.Debug("std out : {Out}", stdout);
+            Log.Debug("std err : {Error}", stderrx);
+
             return Task.CompletedTask;
         }
 
         public async Task RestoreDatabaseAsync(string backupPath, Database database)
         {
-
             bool exists = await CheckIfDatabaseExistsAsync(database);
 
             if (!exists)
@@ -106,6 +125,10 @@ namespace DBBackup.Postgres
             command.Parameters.AddWithValue("@dbname", database.DatabaseName);
 
             bool exists = await command.ExecuteScalarAsync() is true;
+
+            string logMessage = exists ? "Database {Database} was found" : "Database {Database} was not found";
+            Log.Information(logMessage, database.DatabaseName);
+
             return exists;
         }
 
@@ -126,7 +149,7 @@ namespace DBBackup.Postgres
             using var command = new NpgsqlCommand(query, connection);
             await command.ExecuteNonQueryAsync();
 
-            Console.WriteLine($"Новая база данных '{database.DatabaseName}' успешно создана");
+            Log.Information("Database {Database} was successfully created", database.DatabaseName);
         }
 
 
@@ -157,15 +180,28 @@ namespace DBBackup.Postgres
             // выполнение
             using Process process = new Process() { StartInfo = startInfo };
 
+            Log.Information("Start restore");
+            DateTime start = DateTime.Now;
+
             process.Start();
             string stdout = process.StandardOutput.ReadToEnd();
             string stderrx = process.StandardError.ReadToEnd();
             process.WaitForExit();
 
             // лог
-            Console.WriteLine($"Exit code : {process.ExitCode}");
-            Console.WriteLine("std out : " + stdout);
-            Console.WriteLine("std err : " + stderrx);
+            TimeSpan execTime = DateTime.Now - start;
+
+            string logTemplate =
+                "Restore finish with exit code {ExitCode}." + Environment.NewLine +
+                "Execution time: {Time}";
+
+            Log.Information(logTemplate, process.ExitCode, execTime.ToString(@"hh\:mm\:ss"));
+
+            if (process.ExitCode != 0)
+                Log.Error("psql error : {Error}", stderrx);
+
+            Log.Debug("std out : {Out}", stdout);
+            Log.Debug("std err : {Error}", stderrx);
         }
     }
 }
