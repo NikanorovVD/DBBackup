@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text;
+using DBBackup.Email;
 using DBBackup.Helpers;
 using Npgsql;
 using Serilog;
@@ -94,6 +95,10 @@ namespace DBBackup.Postgres
             Log.Debug("std out : {Out}", stdout);
             Log.Debug("std err : {Error}", stderrx);
 
+            if (process.ExitCode != 0 || !fileExists)
+            {
+                throw new Exception($"Backup fail for database {database.DatabaseName}");
+            }
             return Task.CompletedTask;
         }
 
@@ -202,6 +207,11 @@ namespace DBBackup.Postgres
 
             Log.Debug("std out : {Out}", stdout);
             Log.Debug("std err : {Error}", stderrx);
+
+            if (process.ExitCode != 0)
+            {
+                throw new Exception($"Restore fail for database {database.DatabaseName}");
+            }
         }
     }
 }

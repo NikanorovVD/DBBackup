@@ -2,12 +2,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using DBBackup.Configuration;
+using System.Text.Json;
 
 namespace DBBackup.AutoBackup
 {
     public static class AutoBackupSheduler<BackupServiceT> where BackupServiceT : IBackupService, new()
     {
-        public static async Task StartAutoBackup(Database database, DateTime start, TimeSpan interval)
+        public static async Task StartAutoBackup(Database database, DateTime start, TimeSpan interval, AutoBackupEmailSettings autoBackupEmailSettings, EmailSettings emailSettings)
         {
             IHost builder = Host.CreateDefaultBuilder()
                  .UseSerilog()
@@ -25,12 +27,10 @@ namespace DBBackup.AutoBackup
 
 
             IJobDetail job = JobBuilder.Create<BackupJob<BackupServiceT>>()
-                .WithIdentity("BackupJob")
-                .UsingJobData("User", database.Connection.User)
-                .UsingJobData("Password", database.Connection.Password)
-                .UsingJobData("Host", database.Connection.Host)
-                .UsingJobData("Port", database.Connection.Port)
-                .UsingJobData("Database", database.DatabaseName)
+                .WithIdentity("BackupJob")              
+                .UsingJobData("Database", JsonSerializer.Serialize(database))
+                .UsingJobData("AutoBackupEmailSettings", JsonSerializer.Serialize(autoBackupEmailSettings))
+                .UsingJobData("EmailSettings", JsonSerializer.Serialize(emailSettings))
                 .Build();
 
 

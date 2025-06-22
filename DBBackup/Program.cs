@@ -1,5 +1,6 @@
 ﻿using DBBackup.AutoBackup;
 using DBBackup.Configuration;
+using DBBackup.Email;
 using DBBackup.Postgres;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -30,10 +31,11 @@ namespace DBBackup
 
             //Console.WriteLine(new PostgresBackupService().CheckConnection(database));
             //await new PostgresBackupService().RestoreDatabaseAsync("backup1.sql", database);
-
+            //Console.WriteLine(await new EmailService(settings.Email).CheckConnectionAsync());
+           //await  new EmailService(settings.Email).SendEmailAsync("nikanorov.vd@yandex.ru", "backup", "Backup Test 2");
             DateTime start = backup.Start;
             TimeSpan interval = backup.Period; 
-            await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(database, start, interval);
+            await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(database, start, interval, backup.Email, settings.Email);
         }
     }
 }
