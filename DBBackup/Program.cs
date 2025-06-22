@@ -24,9 +24,7 @@ namespace DBBackup
             };
 
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug()
-                .WriteTo.Console()
-                .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+                .ReadFrom.Configuration(config)
                 .CreateLogger();
 
             //Console.WriteLine(new PostgresBackupService().CheckConnection(database));
