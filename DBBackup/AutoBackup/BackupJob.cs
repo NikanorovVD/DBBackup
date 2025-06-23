@@ -25,42 +25,68 @@ namespace DBBackup.AutoBackup
             if (emailSettings != null) _emailService = new EmailService(emailSettings);
 
             CloudSettings? cloudSettings = JsonSerializer.Deserialize<CloudSettings>(context.MergedJobDataMap.GetString("CloudSettings"));
-            if(cloudSettings != null)
-            _cloudService = cloudSettings.Type switch
+            if (cloudSettings != null)
             {
-                CloudType.Yandex => new YandexDiskService(cloudSettings.OAuthToken)
-            };
+                _cloudService = cloudSettings.Type switch
+                {
+                    CloudType.Yandex => new YandexDiskService(cloudSettings.OAuthToken)
+                };
+            }
+
 
             string pathTemplate = context.MergedJobDataMap.GetString("Path")!;
             DateTime backupTime = DateTime.Now;
             string path = PathFormatter.ReplaceDateTimePlaceholders(pathTemplate, backupTime);
             path = Path.ChangeExtension(path, "sql");
 
+            bool backupError = false;
             try
             {
                 await _backupService.BackupDatabaseAsync(database, path);
+            }
+            catch (Exception ex)
+            {
+                backupError = true;
+                Log.Error("Error while autobackup for database {Database}: {Error}", database.DatabaseName, ex.ToString());
+            }
 
-                if (EmailAvailable() &&
-                    _autoBackupEmailSettings.Level == EmailNotificationLevel.All)
+            if (EmailAvailable())
+            {
+                if (backupError && _autoBackupEmailSettings.Level >= EmailNotificationLevel.ErrorsOnly)
                 {
-                    await _emailService.SendEmailAboutSuccess(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                    try
+                    {
+                        await _emailService.SendEmailAboutFail(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        Log.Error("Error while sending email: {Error}", emailEx.ToString());
+                    }
                 }
+                else if (!backupError && _autoBackupEmailSettings.Level == EmailNotificationLevel.All)
+                {
+                    try
+                    {
+                        await _emailService.SendEmailAboutSuccess(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        Log.Error("Error while sending email: {Error}", emailEx.ToString());
+                    }
+                }
+            }
 
-                if (CloudAvailable())
+            if (CloudAvailable() && !backupError)
+            {
+                try
                 {
                     string cloudPath = PathFormatter.ReplaceDateTimePlaceholders(cloudSettings.Path, backupTime);
                     cloudPath = Path.ChangeExtension(cloudPath, "sql");
                     await _cloudService.SendFile(path, cloudPath);
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Error while autobackup for database {Database}: {Error}", database.DatabaseName, ex.ToString());
-
-                if (EmailAvailable() &&
-                    _autoBackupEmailSettings.Level >= EmailNotificationLevel.ErrorsOnly)
+                catch(Exception cloudEx)
                 {
-                    await _emailService.SendEmailAboutFail(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now, ex);
+                    Log.Error("Error while sending file to cloud {Error}", cloudEx.ToString());
                 }
             }
         }

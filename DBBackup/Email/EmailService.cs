@@ -75,12 +75,12 @@ namespace DBBackup.Email
                 $"Successful backup for database {database} at {dateTime:G}");
         }
 
-        public async Task SendEmailAboutFail(string address, string database, DateTime dateTime, Exception exception)
+        public async Task SendEmailAboutFail(string address, string database, DateTime dateTime)
         {
             await SendEmailAsync(
                 address,
                 "Backup fail",
-                $"Backup fail for database {database} at {DateTime.Now:G} with error: {exception}");
+                $"Backup fail for database {database} at {DateTime.Now:G}");
         }
     }
 }
