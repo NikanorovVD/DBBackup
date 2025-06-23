@@ -79,14 +79,15 @@ namespace DBBackup.Postgres
             TimeSpan execTime = DateTime.Now - start;
             bool fileExists = File.Exists(backupPath);
             long fileSize = fileExists ? new FileInfo(backupPath).Length : 0;
+            string fullBackupPath = new FileInfo(backupPath).FullName;
 
             string logTemplate =
                 "Backup for database {Database} finish with exit code {ExitCode}." + Environment.NewLine +
                 "Execution time: {Time}" + Environment.NewLine +
-                (fileExists ? "Backup file path: {Path}" : "File {Path} not exist") + Environment.NewLine +
+                (fileExists ? "Backup file path: {Path}" : "File {Path} was not created") + Environment.NewLine +
                 (fileExists ? "Backup size: {Size}" : string.Empty);
 
-            Log.Information(logTemplate, database.DatabaseName, process.ExitCode, execTime.ToString(@"hh\:mm\:ss"), backupPath, FileSizeString.Get(fileSize));
+            Log.Information(logTemplate, database.DatabaseName, process.ExitCode, execTime.ToString(@"hh\:mm\:ss"), fullBackupPath, FileSizeString.Get(fileSize));
 
             if (process.ExitCode != 0)
                 Log.Error("pg_dump error : {Error}", stderrx);

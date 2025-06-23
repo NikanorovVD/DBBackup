@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DBBackup": {
+      "commandName": "Project",
+      "commandLineArgs": "auto -c appsettings.Development.json"
+    }
+  }
+}
