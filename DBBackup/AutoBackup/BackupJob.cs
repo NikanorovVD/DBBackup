@@ -27,10 +27,7 @@ namespace DBBackup.AutoBackup
             CloudSettings? cloudSettings = JsonSerializer.Deserialize<CloudSettings>(context.MergedJobDataMap.GetString("CloudSettings"));
             if (cloudSettings != null)
             {
-                _cloudService = cloudSettings.Type switch
-                {
-                    CloudType.Yandex => new YandexDiskService(cloudSettings.OAuthToken)
-                };
+                _cloudService = CloudServiceFactory.GetCloudService(cloudSettings);
             }
 
 
@@ -58,7 +55,7 @@ namespace DBBackup.AutoBackup
                 {
                     string cloudPath = PathFormatter.ReplaceDateTimePlaceholders(cloudSettings.Path, backupTime);
                     cloudPath = Path.ChangeExtension(cloudPath, "sql");
-                    await _cloudService.SendFile(path, cloudPath);
+                    await _cloudService.SendFileAsync(path, cloudPath);
                     Log.Information("Send backup for database {Database} to {CloudType} cloud at path {CloudPath}", database.DatabaseName, cloudSettings.Type, cloudPath);
                 }
                 catch (Exception cloudEx)

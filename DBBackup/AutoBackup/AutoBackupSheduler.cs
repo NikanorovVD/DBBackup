@@ -6,6 +6,7 @@ using DBBackup.Configuration;
 using System.Text.Json;
 using DBBackup.Email;
 using DBBackup.Helpers;
+using DBBackup.Cloud;
 
 namespace DBBackup.AutoBackup
 {
@@ -46,6 +47,13 @@ namespace DBBackup.AutoBackup
 
                 bool dbAccessible = new BackupServiceT().CheckConnection(database);
                 if (!dbAccessible) Log.Error("Can not access Database {Database}", database.DatabaseName);
+
+                if(autoBackup.Cloud != null)
+                {
+                    ICloudService cloudService = CloudServiceFactory.GetCloudService(autoBackup.Cloud);
+                    bool cloudAccessible = await cloudService.CheckConnectionAsync();
+                    if (!cloudAccessible) Log.Error("Can not access cloud type {CloudType}", autoBackup.Cloud.Type);
+                }
 
                 IJobDetail job = JobBuilder.Create<BackupJob<BackupServiceT>>()
                     .WithIdentity(autoBackup.Database)
