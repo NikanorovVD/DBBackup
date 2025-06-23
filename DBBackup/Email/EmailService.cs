@@ -67,7 +67,7 @@ namespace DBBackup.Email
             await client.DisconnectAsync(true);
         }
 
-        public async Task SendEmailAboutSuccess(string address, string database, DateTime dateTime)
+        public async Task SendEmailAboutBackupSuccess(string address, string database, DateTime dateTime)
         {
             await SendEmailAsync(
                 address,
@@ -75,12 +75,20 @@ namespace DBBackup.Email
                 $"Successful backup for database {database} at {dateTime:G}");
         }
 
-        public async Task SendEmailAboutFail(string address, string database, DateTime dateTime)
+        public async Task SendEmailAboutBackupFail(string address, string database, DateTime dateTime)
         {
             await SendEmailAsync(
                 address,
                 "Backup fail",
                 $"Backup fail for database {database} at {DateTime.Now:G}");
+        }
+
+        public async Task SendEmailAboutCloudError(string address, string database, DateTime dateTime)
+        {
+            await SendEmailAsync(
+                address,
+                "Backup save to cloud fail",
+                $"Error while saving backup in cloud for database {database} at {dateTime:G}");
         }
     }
 }

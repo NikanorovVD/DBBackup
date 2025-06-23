@@ -40,6 +40,8 @@ namespace DBBackup.AutoBackup
             path = Path.ChangeExtension(path, "sql");
 
             bool backupError = false;
+            bool cloudError = false;
+
             try
             {
                 await _backupService.BackupDatabaseAsync(database, path);
@@ -48,34 +50,6 @@ namespace DBBackup.AutoBackup
             {
                 backupError = true;
                 Log.Error("Error while autobackup for database {Database}: {Error}", database.DatabaseName, ex.ToString());
-            }
-
-            if (EmailAvailable())
-            {
-                if (backupError && _autoBackupEmailSettings.Level >= EmailNotificationLevel.ErrorsOnly)
-                {
-                    try
-                    {
-                        await _emailService.SendEmailAboutFail(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
-                        Log.Information("Send email about backup fail for database {Database}", database.DatabaseName);
-                    }
-                    catch (Exception emailEx)
-                    {
-                        Log.Error("Error while sending email: {Error}", emailEx.ToString());
-                    }
-                }
-                else if (!backupError && _autoBackupEmailSettings.Level == EmailNotificationLevel.All)
-                {
-                    try
-                    {
-                        await _emailService.SendEmailAboutSuccess(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
-                        Log.Information("Send email about successful backup for database {Database}", database.DatabaseName);
-                    }
-                    catch (Exception emailEx)
-                    {
-                        Log.Error("Error while sending email: {Error}", emailEx.ToString());
-                    }
-                }
             }
 
             if (CloudAvailable() && !backupError)
@@ -87,11 +61,52 @@ namespace DBBackup.AutoBackup
                     await _cloudService.SendFile(path, cloudPath);
                     Log.Information("Send backup for database {Database} to {CloudType} cloud at path {CloudPath}", database.DatabaseName, cloudSettings.Type, cloudPath);
                 }
-                catch(Exception cloudEx)
+                catch (Exception cloudEx)
                 {
+                    cloudError = true;
                     Log.Error("Error while sending file to cloud {Error}", cloudEx.ToString());
                 }
             }
+
+            if (EmailAvailable())
+            {
+                if (backupError && _autoBackupEmailSettings.Level >= EmailNotificationLevel.ErrorsOnly)
+                {
+                    try
+                    {
+                        await _emailService.SendEmailAboutBackupFail(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                        Log.Information("Send email about backup fail for database {Database}", database.DatabaseName);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        Log.Error("Error while sending email: {Error}", emailEx.ToString());
+                    }
+                }
+                else if (cloudError && _autoBackupEmailSettings.Level >= EmailNotificationLevel.ErrorsOnly)
+                {
+                    try
+                    {
+                        await _emailService.SendEmailAboutCloudError(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                        Log.Information("Send email about cloud error for database {Database}", database.DatabaseName);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        Log.Error("Error while sending email: {Error}", emailEx.ToString());
+                    }
+                }
+                else if (!backupError && _autoBackupEmailSettings.Level == EmailNotificationLevel.All)
+                {
+                    try
+                    {
+                        await _emailService.SendEmailAboutBackupSuccess(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                        Log.Information("Send email about successful backup for database {Database}", database.DatabaseName);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        Log.Error("Error while sending email: {Error}", emailEx.ToString());
+                    }
+                }
+            }           
         }
 
         private bool EmailAvailable()
