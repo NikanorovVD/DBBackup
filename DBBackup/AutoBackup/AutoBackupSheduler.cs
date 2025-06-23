@@ -48,7 +48,7 @@ namespace DBBackup.AutoBackup
                 bool dbAccessible = new BackupServiceT().CheckConnection(database);
                 if (!dbAccessible) Log.Error("Can not access Database {Database}", database.DatabaseName);
 
-                if(autoBackup.Cloud != null)
+                if (autoBackup.Cloud != null)
                 {
                     ICloudService cloudService = CloudServiceFactory.GetCloudService(autoBackup.Cloud);
                     bool cloudAccessible = await cloudService.CheckConnectionAsync();
@@ -65,15 +65,20 @@ namespace DBBackup.AutoBackup
                     .Build();
 
 
-                ITrigger trigger = TriggerBuilder.Create()
-                    .WithIdentity(autoBackup.Database)
-                    .StartAt(autoBackup.Start)
-                    .WithSimpleSchedule(s =>
-                       s.WithInterval(autoBackup.Period)
-                       .RepeatForever())
-                    .Build();
+                IEnumerable<ITrigger> triggers = autoBackup.Triggers.Select(triggerSettings =>
+                    TriggerBuilder.Create()
+                       .WithIdentity($"{autoBackup.Database}_Trigger_{triggerSettings.Start}_{triggerSettings.Period}")
+                       .StartAt(triggerSettings.Start)
+                       .WithSimpleSchedule(s =>
+                          s.WithInterval(triggerSettings.Period)
+                          .RepeatForever())
+                       .Build()
+                    );
 
-                await scheduler.ScheduleJob(job, trigger);
+                await scheduler.ScheduleJob(
+                    jobDetail: job,
+                    triggersForJob: triggers.ToList(),
+                    replace: false);
             }
 
             Task host = builder.RunAsync();
