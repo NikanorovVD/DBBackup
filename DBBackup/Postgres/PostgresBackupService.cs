@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Text;
-using DBBackup.Email;
 using DBBackup.Helpers;
 using Npgsql;
 using Serilog;
@@ -68,7 +67,7 @@ namespace DBBackup.Postgres
             // выполнение
             using Process process = new Process() { StartInfo = startInfo };
 
-            Log.Information("Start backup");
+            Log.Information("Start backup for database {Database}", database.DatabaseName);
             DateTime start = DateTime.Now;
 
             process.Start();
@@ -82,12 +81,12 @@ namespace DBBackup.Postgres
             long fileSize = fileExists ? new FileInfo(backupPath).Length : 0;
 
             string logTemplate =
-                "Backup finish with exit code {ExitCode}." + Environment.NewLine +
+                "Backup for database {Database} finish with exit code {ExitCode}." + Environment.NewLine +
                 "Execution time: {Time}" + Environment.NewLine +
                 (fileExists ? "Backup file path: {Path}" : "File {Path} not exist") + Environment.NewLine +
                 (fileExists ? "Backup size: {Size}" : string.Empty);
 
-            Log.Information(logTemplate, process.ExitCode, execTime.ToString(@"hh\:mm\:ss"), backupPath, FileSizeString.Get(fileSize));
+            Log.Information(logTemplate, database.DatabaseName, process.ExitCode, execTime.ToString(@"hh\:mm\:ss"), backupPath, FileSizeString.Get(fileSize));
 
             if (process.ExitCode != 0)
                 Log.Error("pg_dump error : {Error}", stderrx);
