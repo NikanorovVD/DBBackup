@@ -9,19 +9,17 @@ namespace DBBackup.AutoBackup
 {
     public class BackupJob<BackupServiceT> : IJob where BackupServiceT : IBackupService, new()
     {
-        private IBackupService _backupService;
-        private EmailService _emailService;
-        private AutoBackupEmailSettings _autoBackupEmailSettings;
+        private IBackupService _backupService = new BackupServiceT();
+        private EmailService? _emailService;
+        private AutoBackupEmailSettings? _autoBackupEmailSettings;
 
         public async Task Execute(IJobExecutionContext context)
         {
-            _backupService = new BackupServiceT();
-
             Database database = JsonSerializer.Deserialize<Database>(context.MergedJobDataMap.GetString("Database")!)!;
             _autoBackupEmailSettings = JsonSerializer.Deserialize<AutoBackupEmailSettings>(context.MergedJobDataMap.GetString("AutoBackupEmailSettings")!)!;
 
             EmailSettings emailSettings = JsonSerializer.Deserialize<EmailSettings>(context.MergedJobDataMap.GetString("EmailSettings")!)!;
-            _emailService = new EmailService(emailSettings);
+            if (emailSettings != null) _emailService = new EmailService(emailSettings);
 
             string pathTemplate = context.MergedJobDataMap.GetString("Path")!;
             string path = PathFormatter.ReplaceDateTimePlaceholders(pathTemplate, DateTime.Now);
@@ -31,7 +29,8 @@ namespace DBBackup.AutoBackup
             {
                 await _backupService.BackupDatabaseAsync(database, path);
 
-                if (_autoBackupEmailSettings.Level == EmailNotificationLevel.All)
+                if (EmailAvailable() &&
+                    _autoBackupEmailSettings.Level == EmailNotificationLevel.All)
                 {
                     await _emailService.SendEmailAboutSuccess(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
                 }
@@ -40,11 +39,15 @@ namespace DBBackup.AutoBackup
             {
                 Log.Error("Error while autobackup for database {Database}: {Error}", database.DatabaseName, ex.ToString());
 
-                if (_autoBackupEmailSettings.Level >= EmailNotificationLevel.ErrorsOnly)
+                if (EmailAvailable() &&
+                    _autoBackupEmailSettings.Level >= EmailNotificationLevel.ErrorsOnly)
                 {
                     await _emailService.SendEmailAboutFail(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now, ex);
                 }
             }
         }
+
+        private bool EmailAvailable()
+            => _emailService != null && _autoBackupEmailSettings != null;
     }
 }
