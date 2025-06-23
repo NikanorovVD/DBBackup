@@ -1,6 +1,5 @@
 ﻿using DBBackup.AutoBackup;
 using DBBackup.Configuration;
-using DBBackup.Email;
 using DBBackup.Postgres;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -23,7 +22,7 @@ namespace DBBackup
                 .ReadFrom.Configuration(config)
                 .CreateLogger();
 
-            await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(connection, settings.AutoBackups, settings.Email);
+           await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(connection, settings.AutoBackups, settings.Email);
         }
     }
 }

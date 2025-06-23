@@ -8,5 +8,6 @@
         public TimeSpan Period { get; set; }
         public DateTime Start { get; set; }
         public AutoBackupEmailSettings Email { get; set; }
+        public CloudSettings Cloud { get; set; }
     }
 }

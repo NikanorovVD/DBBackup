@@ -1,4 +1,5 @@
-﻿using DBBackup.Configuration;
+﻿using DBBackup.Cloud;
+using DBBackup.Configuration;
 using DBBackup.Email;
 using DBBackup.Helpers;
 using Quartz;
@@ -11,18 +12,28 @@ namespace DBBackup.AutoBackup
     {
         private IBackupService _backupService = new BackupServiceT();
         private EmailService? _emailService;
+        private ICloudService _cloudService;
         private AutoBackupEmailSettings? _autoBackupEmailSettings;
 
         public async Task Execute(IJobExecutionContext context)
         {
             Database database = JsonSerializer.Deserialize<Database>(context.MergedJobDataMap.GetString("Database")!)!;
-            _autoBackupEmailSettings = JsonSerializer.Deserialize<AutoBackupEmailSettings>(context.MergedJobDataMap.GetString("AutoBackupEmailSettings")!)!;
 
-            EmailSettings emailSettings = JsonSerializer.Deserialize<EmailSettings>(context.MergedJobDataMap.GetString("EmailSettings")!)!;
+            _autoBackupEmailSettings = JsonSerializer.Deserialize<AutoBackupEmailSettings>(context.MergedJobDataMap.GetString("AutoBackupEmailSettings"));
+
+            EmailSettings? emailSettings = JsonSerializer.Deserialize<EmailSettings>(context.MergedJobDataMap.GetString("EmailSettings"));
             if (emailSettings != null) _emailService = new EmailService(emailSettings);
 
+            CloudSettings? cloudSettings = JsonSerializer.Deserialize<CloudSettings>(context.MergedJobDataMap.GetString("CloudSettings"));
+            if(cloudSettings != null)
+            _cloudService = cloudSettings.Type switch
+            {
+                CloudType.Yandex => new YandexDiskService(cloudSettings.OAuthToken)
+            };
+
             string pathTemplate = context.MergedJobDataMap.GetString("Path")!;
-            string path = PathFormatter.ReplaceDateTimePlaceholders(pathTemplate, DateTime.Now);
+            DateTime backupTime = DateTime.Now;
+            string path = PathFormatter.ReplaceDateTimePlaceholders(pathTemplate, backupTime);
             path = Path.ChangeExtension(path, "sql");
 
             try
@@ -33,6 +44,13 @@ namespace DBBackup.AutoBackup
                     _autoBackupEmailSettings.Level == EmailNotificationLevel.All)
                 {
                     await _emailService.SendEmailAboutSuccess(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                }
+
+                if (CloudAvailable())
+                {
+                    string cloudPath = PathFormatter.ReplaceDateTimePlaceholders(cloudSettings.Path, backupTime);
+                    cloudPath = Path.ChangeExtension(cloudPath, "sql");
+                    await _cloudService.SendFile(path, cloudPath);
                 }
             }
             catch (Exception ex)
@@ -49,5 +67,8 @@ namespace DBBackup.AutoBackup
 
         private bool EmailAvailable()
             => _emailService != null && _autoBackupEmailSettings != null;
+
+        private bool CloudAvailable()
+            => _cloudService != null;
     }
 }

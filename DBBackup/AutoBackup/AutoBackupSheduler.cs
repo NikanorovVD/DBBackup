@@ -50,9 +50,10 @@ namespace DBBackup.AutoBackup
                 IJobDetail job = JobBuilder.Create<BackupJob<BackupServiceT>>()
                     .WithIdentity(autoBackup.Database)
                     .UsingJobData("Database", JsonSerializer.Serialize(database))
-                    .UsingJobData("AutoBackupEmailSettings", JsonSerializer.Serialize(autoBackup.Email))
-                    .UsingJobData("EmailSettings", JsonSerializer.Serialize(emailSettings))
                     .UsingJobData("Path", autoBackup.Path)
+                    .UsingJobData("EmailSettings", JsonSerializer.Serialize(emailSettings))
+                    .UsingJobData("AutoBackupEmailSettings", JsonSerializer.Serialize(autoBackup.Email))
+                    .UsingJobData("CloudSettings", JsonSerializer.Serialize(autoBackup.Cloud))
                     .Build();
 
 
