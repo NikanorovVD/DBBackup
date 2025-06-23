@@ -57,6 +57,7 @@ namespace DBBackup.AutoBackup
                     try
                     {
                         await _emailService.SendEmailAboutFail(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                        Log.Information("Send email about backup fail for database {Database}", database.DatabaseName);
                     }
                     catch (Exception emailEx)
                     {
@@ -68,6 +69,7 @@ namespace DBBackup.AutoBackup
                     try
                     {
                         await _emailService.SendEmailAboutSuccess(_autoBackupEmailSettings.Address, database.DatabaseName, DateTime.Now);
+                        Log.Information("Send email about successful backup for database {Database}", database.DatabaseName);
                     }
                     catch (Exception emailEx)
                     {
@@ -83,6 +85,7 @@ namespace DBBackup.AutoBackup
                     string cloudPath = PathFormatter.ReplaceDateTimePlaceholders(cloudSettings.Path, backupTime);
                     cloudPath = Path.ChangeExtension(cloudPath, "sql");
                     await _cloudService.SendFile(path, cloudPath);
+                    Log.Information("Send backup for database {Database} to {CloudType} cloud at path {CloudPath}", database.DatabaseName, cloudSettings.Type, cloudPath);
                 }
                 catch(Exception cloudEx)
                 {
