@@ -5,6 +5,7 @@ using Serilog;
 using DBBackup.Configuration;
 using System.Text.Json;
 using DBBackup.Email;
+using DBBackup.Helpers;
 
 namespace DBBackup.AutoBackup
 {
@@ -26,7 +27,7 @@ namespace DBBackup.AutoBackup
             ISchedulerFactory schedulerFactory = builder.Services.GetRequiredService<ISchedulerFactory>();
             IScheduler scheduler = await schedulerFactory.GetScheduler();
 
-            if(emailSettings != null)
+            if (emailSettings != null)
             {
                 bool emailAccessible = await new EmailService(emailSettings).CheckConnectionAsync();
                 if (!emailAccessible) Log.Error("Can not access SMTP server");
@@ -39,6 +40,9 @@ namespace DBBackup.AutoBackup
                     Connection = connection,
                     DatabaseName = autoBackup.Database
                 };
+
+                bool pathValid = PathValidator.PathDirExists(autoBackup.Path);
+                if (!pathValid) Log.Error("Invalid path: {Path}", autoBackup.Path);
 
                 bool dbAccessible = new BackupServiceT().CheckConnection(database);
                 if (!dbAccessible) Log.Error("Can not access Database {Database}", database.DatabaseName);
@@ -60,10 +64,10 @@ namespace DBBackup.AutoBackup
                        .RepeatForever())
                     .Build();
 
-                await scheduler.ScheduleJob(job, trigger);               
+                await scheduler.ScheduleJob(job, trigger);
             }
 
-            Task host = builder.RunAsync();          
+            Task host = builder.RunAsync();
             await host;
         }
     }
