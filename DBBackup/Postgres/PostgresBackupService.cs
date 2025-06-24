@@ -6,7 +6,7 @@ using Serilog;
 
 namespace DBBackup.Postgres
 {
-    public class PostgresBackupService : IBackupService
+    public class PostgresBackupService : BackupService
     {
         public static string GetConnectionString(Database database)
         {
@@ -20,7 +20,7 @@ namespace DBBackup.Postgres
                 );
         }
 
-        public bool CheckConnection(Database database)
+        public override bool CheckConnection(Database database)
         {
             string connectionString = GetConnectionString(database);
             using var connection = new NpgsqlConnection(connectionString);
@@ -40,7 +40,7 @@ namespace DBBackup.Postgres
             }
         }
 
-        public Task BackupDatabaseAsync(Database database, string backupPath)
+        public override Task<(int ExitCode, string StdOut, string StdErrrx)> RunBackupProcess(Database database, string backupPath)
         {
             // настройка процесса        
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -67,98 +67,15 @@ namespace DBBackup.Postgres
             // выполнение
             using Process process = new Process() { StartInfo = startInfo };
 
-            Log.Information("Start backup for database {Database}", database.DatabaseName);
-            DateTime start = DateTime.Now;
-
             process.Start();
             string stdout = process.StandardOutput.ReadToEnd();
             string stderrx = process.StandardError.ReadToEnd();
             process.WaitForExit();
 
-            // лог
-            TimeSpan execTime = DateTime.Now - start;
-            bool fileExists = File.Exists(backupPath);
-            long fileSize = fileExists ? new FileInfo(backupPath).Length : 0;
-            string fullBackupPath = new FileInfo(backupPath).FullName;
-
-            string logTemplate =
-                "Backup for database {Database} finish with exit code {ExitCode}." + Environment.NewLine +
-                "Execution time: {Time}" + Environment.NewLine +
-                (fileExists ? "Backup file path: {Path}" : "File {Path} was not created") + Environment.NewLine +
-                (fileExists ? "Backup size: {Size}" : string.Empty);
-
-            Log.Information(logTemplate, database.DatabaseName, process.ExitCode, execTime.ToString(@"hh\:mm\:ss"), fullBackupPath, FileSizeString.Get(fileSize));
-
-            if (process.ExitCode != 0)
-                Log.Error("pg_dump error : {Error}", stderrx);
-
-            Log.Debug("std out : {Out}", stdout);
-            Log.Debug("std err : {Error}", stderrx);
-
-            if (process.ExitCode != 0 || !fileExists)
-            {
-                throw new Exception($"Backup fail for database {database.DatabaseName}");
-            }
-            return Task.CompletedTask;
+            return Task.FromResult((process.ExitCode, stdout, stderrx));
         }
 
-        public async Task RestoreDatabaseAsync(string backupPath, Database database)
-        {
-            bool exists = await CheckIfDatabaseExistsAsync(database);
-
-            if (!exists)
-            {
-                await CreateNewDatabaseAsync(database);
-            }
-
-            ApplySqlDump(backupPath, database);
-        }
-
-        public static async Task<bool> CheckIfDatabaseExistsAsync(Database database)
-        {
-            Database postgres = new Database()
-            {
-                Connection = database.Connection,
-                DatabaseName = "postgres"
-            };
-
-            string postgresConnectionSrting = GetConnectionString(postgres);
-            using var connection = new NpgsqlConnection(postgresConnectionSrting);
-            await connection.OpenAsync();
-
-            using var command = new NpgsqlCommand(PGQueries.CheckDbExists, connection);
-            command.Parameters.AddWithValue("@dbname", database.DatabaseName);
-
-            bool exists = await command.ExecuteScalarAsync() is true;
-
-            string logMessage = exists ? "Database {Database} was found" : "Database {Database} was not found";
-            Log.Information(logMessage, database.DatabaseName);
-
-            return exists;
-        }
-
-
-        public static async Task CreateNewDatabaseAsync(Database database)
-        {
-            Database postgres = new Database()
-            {
-                Connection = database.Connection,
-                DatabaseName = "postgres"
-            };
-
-            string postgresConnectionSrting = GetConnectionString(postgres);
-            using var connection = new NpgsqlConnection(postgresConnectionSrting);
-            await connection.OpenAsync();
-
-            string query = string.Format(PGQueries.CreatDb, database.DatabaseName, database.Connection.User);
-            using var command = new NpgsqlCommand(query, connection);
-            await command.ExecuteNonQueryAsync();
-
-            Log.Information("Database {Database} was successfully created", database.DatabaseName);
-        }
-
-
-        public static void ApplySqlDump(string backupPath, Database database)
+        public override Task<(int ExitCode, string StdOut, string StdErrrx)> RunRestoreProcess(string backupPath, Database database)
         {
             // настройка процесса
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -185,33 +102,54 @@ namespace DBBackup.Postgres
             // выполнение
             using Process process = new Process() { StartInfo = startInfo };
 
-            Log.Information("Start restore");
-            DateTime start = DateTime.Now;
-
             process.Start();
             string stdout = process.StandardOutput.ReadToEnd();
             string stderrx = process.StandardError.ReadToEnd();
             process.WaitForExit();
 
-            // лог
-            TimeSpan execTime = DateTime.Now - start;
+            return Task.FromResult((process.ExitCode, stdout, stderrx));
+        }
 
-            string logTemplate =
-                "Restore finish with exit code {ExitCode}." + Environment.NewLine +
-                "Execution time: {Time}";
-
-            Log.Information(logTemplate, process.ExitCode, execTime.ToString(@"hh\:mm\:ss"));
-
-            if (process.ExitCode != 0)
-                Log.Error("psql error : {Error}", stderrx);
-
-            Log.Debug("std out : {Out}", stdout);
-            Log.Debug("std err : {Error}", stderrx);
-
-            if (process.ExitCode != 0)
+        public override async Task<bool> CheckIfDatabaseExistsAsync(Database database)
+        {
+            Database postgres = new Database()
             {
-                throw new Exception($"Restore fail for database {database.DatabaseName}");
-            }
+                Connection = database.Connection,
+                DatabaseName = "postgres"
+            };
+
+            string postgresConnectionSrting = GetConnectionString(postgres);
+            using var connection = new NpgsqlConnection(postgresConnectionSrting);
+            await connection.OpenAsync();
+
+            using var command = new NpgsqlCommand(PGQueries.CheckDbExists, connection);
+            command.Parameters.AddWithValue("@dbname", database.DatabaseName);
+
+            bool exists = await command.ExecuteScalarAsync() is true;
+
+            string logMessage = exists ? "Database {Database} was found" : "Database {Database} was not found";
+            Log.Information(logMessage, database.DatabaseName);
+
+            return exists;
+        }
+
+        public override async Task CreateNewDatabaseAsync(Database database)
+        {
+            Database postgres = new Database()
+            {
+                Connection = database.Connection,
+                DatabaseName = "postgres"
+            };
+
+            string postgresConnectionSrting = GetConnectionString(postgres);
+            using var connection = new NpgsqlConnection(postgresConnectionSrting);
+            await connection.OpenAsync();
+
+            string query = string.Format(PGQueries.CreatDb, database.DatabaseName, database.Connection.User);
+            using var command = new NpgsqlCommand(query, connection);
+            await command.ExecuteNonQueryAsync();
+
+            Log.Information("Database {Database} was successfully created", database.DatabaseName);
         }
     }
 }
