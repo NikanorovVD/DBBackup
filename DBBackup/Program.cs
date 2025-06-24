@@ -1,6 +1,7 @@
 ﻿using DBBackup.AutoBackup;
 using DBBackup.Configuration;
 using DBBackup.Postgres;
+using DBBackup.Validation;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using System.CommandLine;
@@ -81,14 +82,24 @@ namespace DBBackup
                 .AddJsonFile(congigFile.FullName)
                 .Build();
 
-            Settings? settings = config.Get<Settings>() ?? throw new Exception("Invalid settings");
-
-            Connection connection = settings.Connection;
-
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(config)
                 .CreateLogger();
 
+            Settings? settings = config.Get<Settings>() ?? throw new Exception("Invalid settings");
+            var validator = new SettingsValidator();
+            var validationResult = validator.Validate(settings);
+
+            if (!validationResult.IsValid)
+            {
+                foreach (var failure in validationResult.Errors)
+                {
+                    Log.Fatal("Invalid settings: {Error}", failure.ErrorMessage);
+                }
+                throw new Exception("InvalidSettings");
+            }
+
+            Connection connection = new(settings.Connection);
             await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(settings);
         }
 
@@ -103,7 +114,20 @@ namespace DBBackup
                 .MinimumLevel.Information()
                 .CreateLogger();
 
-            Connection connection = config.GetSection("Connection").Get<Connection>() ?? throw new Exception("Invalid settings");
+            ConnectionSettings connectionSettings = config.GetSection("Connection").Get<ConnectionSettings>() ?? throw new Exception("Invalid settings");
+            var validator = new ConnectionValidator();
+            var validationResult = validator.Validate(connectionSettings);
+
+            if (!validationResult.IsValid)
+            {
+                foreach (var failure in validationResult.Errors)
+                {
+                    Log.Fatal("Invalid settings: {Error}", failure.ErrorMessage);
+                }
+                throw new Exception("InvalidSettings");
+            }
+
+            Connection connection = new(connectionSettings);
             Database database = new Database(connection, databaseName);
 
             IBackupService backupService = new PostgresBackupService();
@@ -121,7 +145,20 @@ namespace DBBackup
                 .MinimumLevel.Information()
                 .CreateLogger();
 
-            Connection connection = config.GetSection("Connection").Get<Connection>() ?? throw new Exception("Invalid settings");
+            ConnectionSettings connectionSettings = config.GetSection("Connection").Get<ConnectionSettings>() ?? throw new Exception("Invalid settings");
+            var validator = new ConnectionValidator();
+            var validationResult = validator.Validate(connectionSettings);
+
+            if (!validationResult.IsValid)
+            {
+                foreach (var failure in validationResult.Errors)
+                {
+                    Log.Fatal("Invalid settings: {Error}", failure.ErrorMessage);
+                }
+                throw new Exception("InvalidSettings");
+            }
+
+            Connection connection = new(connectionSettings);
             Database database = new Database(connection, databaseName);
 
             IBackupService backupService = new PostgresBackupService();

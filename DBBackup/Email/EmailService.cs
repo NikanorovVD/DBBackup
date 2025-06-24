@@ -25,7 +25,7 @@ namespace DBBackup.Email
         }
 
         public EmailService(EmailSettings settings)
-            : this(settings.SmtpServer, settings.Port, settings.UseSSL, settings.Login, settings.Password, settings.SenderName) { }
+            : this(settings.SmtpServer, settings.Port.Value, settings.UseSSL.Value, settings.Login, settings.Password, settings.SenderName) { }
 
         public async Task<bool> CheckConnectionAsync()
         {

@@ -14,7 +14,7 @@ namespace DBBackup.AutoBackup
     {
         public static async Task StartAutoBackup(Settings settings)
         {
-            Connection connection = settings.Connection;
+            Connection connection = new(settings.Connection);
             IEnumerable<AutoBackupSettings> autoBackups = settings.AutoBackups;
             EmailSettings emailSettings = settings.Email;
             TriggerSettings deleterSettings = settings.OldFilesDeletion;
@@ -68,9 +68,9 @@ namespace DBBackup.AutoBackup
                 IEnumerable<ITrigger> triggers = autoBackup.Triggers.Select(triggerSettings =>
                     TriggerBuilder.Create()
                        .WithIdentity($"{autoBackup.Database}_Trigger_{triggerSettings.Start}_{triggerSettings.Period}")
-                       .StartAt(triggerSettings.Start)
+                       .StartAt(triggerSettings.Start.Value)
                        .WithSimpleSchedule(s =>
-                          s.WithInterval(triggerSettings.Period)
+                          s.WithInterval(triggerSettings.Period.Value)
                           .RepeatForever())
                        .Build()
                     );
@@ -91,9 +91,9 @@ namespace DBBackup.AutoBackup
                 ITrigger deleteTrigger =
                     TriggerBuilder.Create()
                        .WithIdentity($"Deleter_Trigger")
-                       .StartAt(deleterSettings.Start)
+                       .StartAt(deleterSettings.Start.Value)
                        .WithSimpleSchedule(s =>
-                          s.WithInterval(deleterSettings.Period)
+                          s.WithInterval(deleterSettings.Period.Value)
                           .RepeatForever())
                        .Build();
 
