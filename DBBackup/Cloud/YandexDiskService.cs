@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Newtonsoft.Json.Linq;
+using Serilog;
 using YandexDisk.Client;
 using YandexDisk.Client.Clients;
 using YandexDisk.Client.Http;
@@ -9,6 +10,8 @@ namespace DBBackup.Cloud
     {
         private readonly string _oauthToken;
         private readonly IDiskApi _diskApi;
+
+        private const string _yandexIdInfoUrlTemplate = "https://login.yandex.ru/info?format=json&oauth_token={0}";
         public YandexDiskService(string oauthToken)
         {
             _oauthToken = oauthToken;
@@ -17,14 +20,20 @@ namespace DBBackup.Cloud
 
         public async Task<bool> CheckConnectionAsync()
         {
+            string yandexIdInfoUrl = string.Format(_yandexIdInfoUrlTemplate, _oauthToken);
             try
             {
-                var metaInfo = await _diskApi.MetaInfo.GetDiskInfoAsync();
-                return true;
+                HttpResponseMessage response = await new HttpClient().GetAsync(yandexIdInfoUrl);
+                if (response.IsSuccessStatusCode) return true;
+                else
+                {
+                    Log.Error("Error while authentication in Yandex ID: {Error}", await response.Content.ReadAsStringAsync());
+                    return false;
+                }
             }
             catch (Exception ex)
             {
-                Log.Error("Error connecting Yandex disk: {Error}", ex.ToString());
+                Log.Error("Error connecting Yandex ID: {Error}", ex.ToString());
                 return false;
             }
         }
