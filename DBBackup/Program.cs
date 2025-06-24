@@ -104,11 +104,7 @@ namespace DBBackup
                 .CreateLogger();
 
             Connection connection = config.GetSection("Connection").Get<Connection>() ?? throw new Exception("Invalid settings");
-            Database database = new Database()
-            {
-                Connection = connection,
-                DatabaseName = databaseName
-            };
+            Database database = new Database(connection, databaseName);
 
             IBackupService backupService = new PostgresBackupService();
             await backupService.BackupDatabaseAsync(database, path);
@@ -126,11 +122,7 @@ namespace DBBackup
                 .CreateLogger();
 
             Connection connection = config.GetSection("Connection").Get<Connection>() ?? throw new Exception("Invalid settings");
-            Database database = new Database()
-            {
-                Connection = connection,
-                DatabaseName = databaseName
-            };
+            Database database = new Database(connection, databaseName);
 
             IBackupService backupService = new PostgresBackupService();
             await backupService.RestoreDatabaseAsync(backupFile.FullName, database);

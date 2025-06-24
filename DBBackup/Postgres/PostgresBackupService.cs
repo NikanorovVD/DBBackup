@@ -112,11 +112,7 @@ namespace DBBackup.Postgres
 
         public override async Task<bool> CheckIfDatabaseExistsAsync(Database database)
         {
-            Database postgres = new Database()
-            {
-                Connection = database.Connection,
-                DatabaseName = "postgres"
-            };
+            Database postgres = new Database(database.Connection, "postgres");
 
             string postgresConnectionSrting = GetConnectionString(postgres);
             using var connection = new NpgsqlConnection(postgresConnectionSrting);
@@ -135,11 +131,7 @@ namespace DBBackup.Postgres
 
         public override async Task CreateNewDatabaseAsync(Database database)
         {
-            Database postgres = new Database()
-            {
-                Connection = database.Connection,
-                DatabaseName = "postgres"
-            };
+            Database postgres = new Database(database.Connection, "postgres");
 
             string postgresConnectionSrting = GetConnectionString(postgres);
             using var connection = new NpgsqlConnection(postgresConnectionSrting);

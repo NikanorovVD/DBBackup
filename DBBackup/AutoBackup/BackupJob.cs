@@ -17,23 +17,24 @@ namespace DBBackup.AutoBackup
 
         public async Task Execute(IJobExecutionContext context)
         {
-            Database database = JsonSerializer.Deserialize<Database>(context.MergedJobDataMap.GetString("Database")!)!;
+            Connection connection = JsonSerializer.Deserialize<Connection>(context.MergedJobDataMap.GetString("Connection")!)!;
 
-            TimeSpan? deleteAfter = JsonSerializer.Deserialize<TimeSpan?>(context.MergedJobDataMap.GetString("DeleteAfter"));
+            AutoBackupSettings backupSettings = JsonSerializer.Deserialize<AutoBackupSettings>(context.MergedJobDataMap.GetString("BackupSettings")!)!;
+            Database database  = new Database(connection, backupSettings.Database);
 
-            _autoBackupEmailSettings = JsonSerializer.Deserialize<AutoBackupEmailSettings>(context.MergedJobDataMap.GetString("AutoBackupEmailSettings"));
+            TimeSpan? deleteAfter = backupSettings.DeleteAfter;
+            _autoBackupEmailSettings = backupSettings.Email;
 
             EmailSettings? emailSettings = JsonSerializer.Deserialize<EmailSettings>(context.MergedJobDataMap.GetString("EmailSettings"));
             if (emailSettings != null) _emailService = new EmailService(emailSettings);
 
-            CloudSettings? cloudSettings = JsonSerializer.Deserialize<CloudSettings>(context.MergedJobDataMap.GetString("CloudSettings"));
+            CloudSettings? cloudSettings = backupSettings.Cloud;
             if (cloudSettings != null)
             {
                 _cloudService = CloudServiceFactory.GetCloudService(cloudSettings);
             }
 
-
-            string pathTemplate = context.MergedJobDataMap.GetString("Path")!;
+            string pathTemplate = backupSettings.Path;
             DateTime backupTime = DateTime.Now;
             string path = PathFormatter.ReplaceDateTimePlaceholders(pathTemplate, backupTime);
             path = Path.ChangeExtension(path, "sql");

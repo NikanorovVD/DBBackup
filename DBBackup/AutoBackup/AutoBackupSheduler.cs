@@ -42,11 +42,7 @@ namespace DBBackup.AutoBackup
 
             foreach (AutoBackupSettings autoBackup in autoBackups)
             {
-                Database database = new Database()
-                {
-                    Connection = connection,
-                    DatabaseName = autoBackup.Database
-                };
+                Database database = new Database(connection, autoBackup.Database);
 
                 bool pathValid = PathValidator.PathDirExists(autoBackup.Path);
                 if (!pathValid) Log.Error("Invalid path: {Path}", autoBackup.Path);
@@ -63,12 +59,9 @@ namespace DBBackup.AutoBackup
 
                 IJobDetail job = JobBuilder.Create<BackupJob<BackupServiceT>>()
                     .WithIdentity(autoBackup.Database)
-                    .UsingJobData("Database", JsonSerializer.Serialize(database))
-                    .UsingJobData("Path", autoBackup.Path)
-                    .UsingJobData("DeleteAfter", JsonSerializer.Serialize(autoBackup.DeleteAfter))
+                    .UsingJobData("Connection", JsonSerializer.Serialize(connection))
+                    .UsingJobData("BackupSettings", JsonSerializer.Serialize(autoBackup))
                     .UsingJobData("EmailSettings", JsonSerializer.Serialize(emailSettings))
-                    .UsingJobData("AutoBackupEmailSettings", JsonSerializer.Serialize(autoBackup.Email))
-                    .UsingJobData("CloudSettings", JsonSerializer.Serialize(autoBackup.Cloud))
                     .Build();
 
 
