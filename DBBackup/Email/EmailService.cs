@@ -8,7 +8,7 @@ namespace DBBackup.Email
     public class EmailService
     {
         private readonly string _smtpServer;
-        private readonly int _potr;
+        private readonly int _port;
         private readonly bool _useSsl;
         private readonly string _login;
         private readonly string _password;
@@ -17,7 +17,7 @@ namespace DBBackup.Email
         public EmailService(string smtpServer, int potr, bool useSsl, string login, string password, string senderName)
         {
             _smtpServer = smtpServer;
-            _potr = potr;
+            _port = potr;
             _useSsl = useSsl;
             _login = login;
             _password = password;
@@ -32,7 +32,7 @@ namespace DBBackup.Email
             using var client = new SmtpClient();
             try
             {
-                await client.ConnectAsync(_smtpServer, _potr, _useSsl);
+                await client.ConnectAsync(_smtpServer, _port, _useSsl);
                 await client.AuthenticateAsync(_login, _password);
                 return true;
             }
@@ -60,7 +60,7 @@ namespace DBBackup.Email
             };
 
             using var client = new SmtpClient();
-            await client.ConnectAsync(_smtpServer, _potr, _useSsl);
+            await client.ConnectAsync(_smtpServer, _port, _useSsl);
             await client.AuthenticateAsync(_login, _password);
             await client.SendAsync(emailMessage);
 
