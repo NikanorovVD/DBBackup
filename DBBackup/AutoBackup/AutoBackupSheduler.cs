@@ -12,8 +12,13 @@ namespace DBBackup.AutoBackup
 {
     public static class AutoBackupSheduler<BackupServiceT> where BackupServiceT : IBackupService, new()
     {
-        public static async Task StartAutoBackup(Connection connection, IEnumerable<AutoBackupSettings> autoBackups, EmailSettings emailSettings)
+        public static async Task StartAutoBackup(Settings settings)
         {
+            Connection connection = settings.Connection;
+            IEnumerable<AutoBackupSettings> autoBackups = settings.AutoBackups;
+            EmailSettings emailSettings = settings.Email;
+            TriggerSettings deleterSettings = settings.OldFilesDeletion;
+
             IHost builder = Host.CreateDefaultBuilder()
                  .UseSerilog()
                  .ConfigureServices((cxt, services) =>
@@ -28,6 +33,7 @@ namespace DBBackup.AutoBackup
             ISchedulerFactory schedulerFactory = builder.Services.GetRequiredService<ISchedulerFactory>();
             IScheduler scheduler = await schedulerFactory.GetScheduler();
 
+            MetadataService.CreateMetaDir();
             if (emailSettings != null)
             {
                 bool emailAccessible = await new EmailService(emailSettings).CheckConnectionAsync();
@@ -59,6 +65,7 @@ namespace DBBackup.AutoBackup
                     .WithIdentity(autoBackup.Database)
                     .UsingJobData("Database", JsonSerializer.Serialize(database))
                     .UsingJobData("Path", autoBackup.Path)
+                    .UsingJobData("DeleteAfter", JsonSerializer.Serialize(autoBackup.DeleteAfter))
                     .UsingJobData("EmailSettings", JsonSerializer.Serialize(emailSettings))
                     .UsingJobData("AutoBackupEmailSettings", JsonSerializer.Serialize(autoBackup.Email))
                     .UsingJobData("CloudSettings", JsonSerializer.Serialize(autoBackup.Cloud))
@@ -79,6 +86,25 @@ namespace DBBackup.AutoBackup
                     jobDetail: job,
                     triggersForJob: triggers.ToList(),
                     replace: false);
+            }
+
+            if (deleterSettings != null)
+            {
+                IJobDetail deleteJob = JobBuilder.Create<DeleteOldFilesJob>()
+                   .WithIdentity("Deleter")
+                   .Build();
+
+
+                ITrigger deleteTrigger =
+                    TriggerBuilder.Create()
+                       .WithIdentity($"Deleter_Trigger")
+                       .StartAt(deleterSettings.Start)
+                       .WithSimpleSchedule(s =>
+                          s.WithInterval(deleterSettings.Period)
+                          .RepeatForever())
+                       .Build();
+
+                await scheduler.ScheduleJob(deleteJob, deleteTrigger);
             }
 
             Task host = builder.RunAsync();

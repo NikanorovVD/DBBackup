@@ -19,6 +19,8 @@ namespace DBBackup.AutoBackup
         {
             Database database = JsonSerializer.Deserialize<Database>(context.MergedJobDataMap.GetString("Database")!)!;
 
+            TimeSpan? deleteAfter = JsonSerializer.Deserialize<TimeSpan?>(context.MergedJobDataMap.GetString("DeleteAfter"));
+
             _autoBackupEmailSettings = JsonSerializer.Deserialize<AutoBackupEmailSettings>(context.MergedJobDataMap.GetString("AutoBackupEmailSettings"));
 
             EmailSettings? emailSettings = JsonSerializer.Deserialize<EmailSettings>(context.MergedJobDataMap.GetString("EmailSettings"));
@@ -47,6 +49,11 @@ namespace DBBackup.AutoBackup
             {
                 backupError = true;
                 Log.Error("Error while autobackup for database {Database}: {Error}", database.DatabaseName, ex.ToString());
+            }
+
+            if (!backupError && deleteAfter != null)
+            {
+                MetadataService.WriteMetadata(new FileMetadata(path, DateTime.Now, DateTime.Now.Add(deleteAfter.Value)));
             }
 
             if (CloudAvailable() && !backupError)
@@ -103,7 +110,7 @@ namespace DBBackup.AutoBackup
                         Log.Error("Error while sending email: {Error}", emailEx.ToString());
                     }
                 }
-            }           
+            }
         }
 
         private bool EmailAvailable()
@@ -111,5 +118,6 @@ namespace DBBackup.AutoBackup
 
         private bool CloudAvailable()
             => _cloudService != null;
+
     }
 }

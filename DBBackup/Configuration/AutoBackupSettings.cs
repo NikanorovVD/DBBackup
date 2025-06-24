@@ -6,6 +6,7 @@
         public string Path { get; set; }
         public string Type { get; set; }
         public IEnumerable<TriggerSettings> Triggers { get; set; }
+        public TimeSpan? DeleteAfter { get; set; }
         public AutoBackupEmailSettings Email { get; set; }
         public CloudSettings Cloud { get; set; }
     }

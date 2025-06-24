@@ -89,7 +89,7 @@ namespace DBBackup
                 .ReadFrom.Configuration(config)
                 .CreateLogger();
 
-            await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(connection, settings.AutoBackups, settings.Email);
+            await AutoBackupSheduler<PostgresBackupService>.StartAutoBackup(settings);
         }
 
         private static async Task Backup(FileInfo congigFile, string databaseName, string path)
